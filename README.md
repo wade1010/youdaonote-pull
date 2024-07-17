@@ -7,11 +7,13 @@
 
 # 说明两点，跟原本教程有点不一样
 ## 1：激活环境， windows 我也不怎么研究，但是我用. venv/bin/activate 激活不成功，就用了下面的方法激活
+```
 #Windows 环境
 python -m venv venv         # 使用虚拟环境
 cd .\venv\Scripts
 activate         # 激活虚拟环境
 pip install -r requirements.txt
+```
 
 ## 2：config.json
 ```
