@@ -1,3 +1,34 @@
+我在大佬代码的基础上增加了支持 PicList ( PicGo 的基础上进行二次开发的)
+
+搭建过程可以查看我的笔记
+
+笔记 1 ：[windows用obsidian配置linux的piclist](https://blog.csdn.net/wade1010/article/details/140508012)
+笔记 2 : [linux(ubuntu20.04)+PicGo(gui版)+github+typora搭建笔记](https://blog.csdn.net/wade1010/article/details/140507025)
+
+# 说明两点，跟原本教程有点不一样
+## 1：激活环境， windows 我也不怎么研究，但是我用. venv/bin/activate 激活不成功，就用了下面的方法激活
+#Windows 环境
+python -m venv venv         # 使用虚拟环境
+cd .\venv\Scripts
+activate         # 激活虚拟环境
+pip install -r requirements.txt
+
+## 2：config.json
+```
+{
+    "local_dir": "D:/download/youdaonote-pull-master/data",
+    "ydnote_dir": "",
+    "smms_secret_token": "",
+    "piclist_api": "http://127.0.0.1:18888/upload?key=a123456",
+    "is_relative_path": true
+}
+```
+如果配置 piclist_api，就优先上传到 PicList
+如果没配置 piclist_api，但配置了 smms_secret_token，就上传到 SM.MS
+都不配置，则保存到本地
+
+---
+
 最近在玩 [X(Twitter)](https://twitter.com/deppwang1)，欢迎关注！
 
 # youdaonote-pull
@@ -55,10 +86,11 @@ python3 -m venv venv        # 使用虚拟环境
 sudo pip3 install -r requirements.txt
 ```
 ```shell
-# Windows
-python -m venv venv         # 使用虚拟环境
-. venv/bin/activate         # 激活虚拟环境
-pip install -r requirements.txt
+
+
+
+
+
 
 # 有问题可参考 https://www.liaoxuefeng.com/wiki/1016959663602400/1017493741106496
 ```

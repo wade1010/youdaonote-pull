@@ -20,10 +20,12 @@ class ImagePull:
         self,
         youdaonote_api,
         smms_secret_token: str,
+        piclist_api: str,
         is_relative_path: bool,
     ):
         self.youdaonote_api = youdaonote_api
         self.smms_secret_token = smms_secret_token
+        self.piclist_api = piclist_api
         self.is_relative_path = is_relative_path
 
     @classmethod
@@ -60,7 +62,7 @@ class ImagePull:
                 continue
             # 将绝对路径替换为相对路径，实现满足 Obsidian 格式要求
             # 将 image_path 路径中 images 之前的路径去掉，只保留以 images 开头的之后的路径
-            if self.is_relative_path and not self.smms_secret_token:
+            if self.is_relative_path and (not self.smms_secret_token or not self.piclist_api):
                 image_path = image_path[image_path.find(IMAGES) :]
 
             image_path = self._url_encode(image_path)
@@ -94,16 +96,23 @@ class ImagePull:
         :return: new_image_path
         """
         # 当 smms_secret_token 为空（不上传到 SM.MS），下载到图片到本地
-        if not self.smms_secret_token:
+        if not self.smms_secret_token and not self.piclist_api:
             image_path = self._download_ydnote_url(file_path, image_url)
             return image_path or image_url
-
-        # smms_secret_token 不为空，上传到 SM.MS
-        new_file_url, error_msg = ImageUpload.upload_to_smms(
-            youdaonote_api=self.youdaonote_api,
-            image_url=image_url,
-            smms_secret_token=self.smms_secret_token,
-        )
+        if self.piclist_api:
+            # piclist_api 不为空，上传到 PicList
+            new_file_url, error_msg = ImageUpload.upload_to_piclist(
+                youdaonote_api=self.youdaonote_api,
+                image_url=image_url,
+                piclist_api=self.piclist_api,
+            )
+        else:
+            # smms_secret_token 不为空，上传到 SM.MS
+            new_file_url, error_msg = ImageUpload.upload_to_smms(
+                youdaonote_api=self.youdaonote_api,
+                image_url=image_url,
+                smms_secret_token=self.smms_secret_token,
+            )
         # 如果上传失败，仍下载到本地
         if not error_msg:
             return new_file_url
@@ -260,6 +269,48 @@ class ImageUpload(object):
         error_msg = (
             "上传「{}」到 SM.MS 失败，请检查图片 url 或 smms_secret_token（{}）是否正确！将下载图片到本地".format(
                 image_url, smms_secret_token
+            )
+        )
+        return "", error_msg
+    
+    @staticmethod
+    def upload_to_piclist(youdaonote_api, image_url, piclist_api) -> Tuple[str, str]:
+        """
+        上传图片到 PicList
+        :param image_url:
+        :param piclist_api:
+        :return: url, error_msg
+        """
+        try:
+            piclistfile = youdaonote_api.http_get(image_url).content
+        except:
+            error_msg = "下载「{}」失败！图片可能已失效，可浏览器登录有道云笔记后，查看图片是否能正常加载".format(image_url)
+            return "", error_msg
+        files = {"piclistfile": piclistfile}
+
+        try:
+            res_json = requests.post(
+                piclist_api, files=files, timeout=20
+            ).json()
+        except requests.exceptions.ProxyError as err:
+            error_msg = "网络错误，上传「{}」到 PicList 失败！将下载图片到本地。错误提示：{}".format(
+                image_url, format(err)
+            )
+            return "", error_msg
+        except Exception as err:
+            error_msg = "上传错误，上传「{}」到 PicList 失败！将下载图片到本地。错误提示：{}".format(
+                image_url, format(err)
+            )
+            return "", error_msg
+
+        if res_json.get("success"):
+            url = res_json["result"][0]
+            logging.info("已将图片「{}」转换为「{}」".format(image_url, url))
+            return url, ""
+        logging.error(res_json)
+        error_msg = (
+            "上传「{}」到 PicList 失败，请检查图片 url 或 piclist_api（{}）是否正确！将下载图片到本地".format(
+                image_url, piclist_api
             )
         )
         return "", error_msg

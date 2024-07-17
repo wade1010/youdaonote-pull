@@ -51,6 +51,7 @@ class YoudaoNotePull(object):
         self.root_local_dir = None  # 本地文件根目录
         self.youdaonote_api = None
         self.smms_secret_token = None
+        self.piclist_api = None
         self.is_relative_path = None  # 是否使用相对路径
 
     def _covert_config(self, config_path=None) -> Tuple[dict, str]:
@@ -76,11 +77,11 @@ class YoudaoNotePull(object):
                 "请检查「config.json」格式是否为 utf-8 格式的 json！建议使用 Sublime 编辑「config.json」",
             )
 
-        key_list = ["local_dir", "ydnote_dir", "smms_secret_token", "is_relative_path"]
+        key_list = ["local_dir", "ydnote_dir", "smms_secret_token", "piclist_api", "is_relative_path"]
         if key_list != list(config_dict.keys()):
             return (
                 {},
-                "请检查「config.json」的 key 是否分别为 local_dir, ydnote_dir, smms_secret_token, is_relative_path",
+                "请检查「config.json」的 key 是否分别为 local_dir, ydnote_dir, smms_secret_token, piclist_api, is_relative_path",
             )
         return config_dict, ""
 
@@ -143,6 +144,7 @@ class YoudaoNotePull(object):
         if error_msg:
             return "", error_msg
         self.smms_secret_token = config_dict["smms_secret_token"]
+        self.piclist_api = config_dict["piclist_api"]
         self.is_relative_path = config_dict["is_relative_path"]
         return self._get_ydnote_dir_id(ydnote_dir=config_dict["ydnote_dir"])
 
@@ -337,7 +339,7 @@ class YoudaoNotePull(object):
         # 3、迁移文本文件里面的有道云笔记图片（链接）
         if file_type != FileType.OTHER or youdao_file_suffix == MARKDOWN_SUFFIX:
             imagePull = ImagePull(
-                self.youdaonote_api, self.smms_secret_token, self.is_relative_path
+                self.youdaonote_api, self.smms_secret_token, self.piclist_api, self.is_relative_path
             )
             imagePull.migration_ydnote_url(local_file_path)
 
