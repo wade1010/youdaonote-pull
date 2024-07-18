@@ -250,8 +250,7 @@ class YoudaoNotePull(object):
                 self._add_or_update_file(id, name, local_dir, modify_time, create_time)
                 if self.piclist_max_repo_size_mb is not None:
                     # 判断是否超过单仓库上限 ，目前只支持从头开始计算。
-                    # if file_size_counter.get() > self.piclist_max_repo_size_mb*1024*1024:
-                    if file_size_counter.get() > 1:
+                    if file_size_counter.get() > self.piclist_max_repo_size_mb*1024*1024:
                         repo_name = increment_string(self.piclist_repo_name)
                         answer = input(f"'{self.piclist_repo_name}的大小已经达到阈值，即将创建新仓库'{repo_name}'，请在 PicList 中将 gitee 图床的 repo 改为'{repo_name}',是否已经修改? (yes/no) 输入 no 将退出程序: ")
                         if answer.lower() == "yes":

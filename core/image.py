@@ -282,7 +282,7 @@ class ImageUpload(object):
         """
         try:
             resp = youdaonote_api.http_get(image_url)
-            file_size = resp.headers['Content-Length'] #单位是B  https://note.youdao.com/yws/res/134064/WEBRESOURCEc952e70ea552d25d95f8484c5a407066       302464
+            file_size = resp.headers['Content-Length']
             piclistfile = resp.content
         except:
             error_msg = "下载「{}」失败！图片可能已失效，可浏览器登录有道云笔记后，查看图片是否能正常加载".format(image_url)
