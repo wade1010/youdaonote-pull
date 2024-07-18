@@ -21,6 +21,9 @@ from core.api import YoudaoNoteApi
 from core.common import get_script_directory
 from core.covert import YoudaoNoteConvert
 from core.image import ImagePull
+import core.file_size_counter as file_size_counter
+from core.common import increment_string
+from core.gitee_handler import create_repo
 
 __author__ = "Depp Wang (deppwxq@gmail.com)"
 __github__ = "https//github.com/DeppWang/youdaonote-pull"
@@ -51,8 +54,12 @@ class YoudaoNotePull(object):
         self.root_local_dir = None  # 本地文件根目录
         self.youdaonote_api = None
         self.smms_secret_token = None
-        self.piclist_api = None
         self.is_relative_path = None  # 是否使用相对路径
+        self.piclist_api = None # 是否使用 PicList 作为图床
+        self.piclist_max_repo_size_mb = None # 可以不配置, 建议填450 PicList 后端采用 gitee 时，单个仓库上传图片最大值，官网写着免费版是500MB，这个统计有延时，我传了2个GB的时候，发邮件通知我，说我超过1个G了，仓库被屏蔽 可以查看笔记 https://blog.csdn.net/wade1010/article/details/140508131。单位MB，但是目前仅仅计算程序一次运行上传的量是不是超过该值，不考虑其他情况了
+        self.piclist_data_json_path = None # 可以不配置, piclist_max_repo_size_mb 配置后，必须配置该值。 这个是在你笔记特别多的时候，giee单个仓库是有限制的，传多了就会被限制，这里直接修改配置文件里面 gitee 的仓库名，没找到好的办法让 PicList 立马重新加载，只能输出一个提示，让用户自己重启。 后来是让用户自己修改配置，所以此项暂时没用
+        self.piclist_repo_name = None # 可以不配置, piclist_max_repo_size_mb 配置后，必须配置该值。gitee 基础镜像名，比如是字母+数字《如 images6，当images6 超过大小后，我会创建 images7，以此类推
+        self.piclist_gitee_token = None # 可以不配置, piclist_max_repo_size_mb 配置后，必须配置该值。gitee tonken ，用来创建桶
 
     def _covert_config(self, config_path=None) -> Tuple[dict, str]:
         """
@@ -77,11 +84,11 @@ class YoudaoNotePull(object):
                 "请检查「config.json」格式是否为 utf-8 格式的 json！建议使用 Sublime 编辑「config.json」",
             )
 
-        key_list = ["local_dir", "ydnote_dir", "smms_secret_token", "piclist_api", "is_relative_path"]
+        key_list = ["local_dir", "ydnote_dir", "smms_secret_token", "is_relative_path", "piclist_api", "piclist_data_json_path", "piclist_repo_name", "piclist_max_repo_size_mb", "piclist_gitee_token"]
         if key_list != list(config_dict.keys()):
             return (
                 {},
-                "请检查「config.json」的 key 是否分别为 local_dir, ydnote_dir, smms_secret_token, piclist_api, is_relative_path",
+                "请检查「config.json」的 key 是否分别为 local_dir, ydnote_dir, smms_secret_token, is_relative_path, piclist_api, piclist_data_json_path, piclist_repo_name, piclist_max_repo_size_mb, piclist_gitee_token",
             )
         return config_dict, ""
 
@@ -146,6 +153,10 @@ class YoudaoNotePull(object):
         self.smms_secret_token = config_dict["smms_secret_token"]
         self.piclist_api = config_dict["piclist_api"]
         self.is_relative_path = config_dict["is_relative_path"]
+        self.piclist_max_repo_size_mb = config_dict["piclist_max_repo_size_mb"]
+        self.piclist_data_json_path = config_dict["piclist_data_json_path"]
+        self.piclist_repo_name = config_dict["piclist_repo_name"]
+        self.piclist_gitee_token = config_dict["piclist_gitee_token"]
         return self._get_ydnote_dir_id(ydnote_dir=config_dict["ydnote_dir"])
 
     def _judge_type(self, file_id, youdao_file_suffix) -> Enum:
@@ -237,6 +248,28 @@ class YoudaoNotePull(object):
                 modify_time = file_entry["modifyTimeForSort"]
                 create_time = file_entry["createTimeForSort"]
                 self._add_or_update_file(id, name, local_dir, modify_time, create_time)
+                if self.piclist_max_repo_size_mb is not None:
+                    # 判断是否超过单仓库上限 ，目前只支持从头开始计算。
+                    # if file_size_counter.get() > self.piclist_max_repo_size_mb*1024*1024:
+                    if file_size_counter.get() > 1:
+                        repo_name = increment_string(self.piclist_repo_name)
+                        answer = input(f"'{self.piclist_repo_name}的大小已经达到阈值，即将创建新仓库'{repo_name}'，请在 PicList 中将 gitee 图床的 repo 改为'{repo_name}',是否已经修改? (yes/no) 输入 no 将退出程序: ")
+                        if answer.lower() == "yes":
+                            # 在这里执行创建仓库的操作
+                            logging.info(f"Creating repository '{repo_name}'...")
+                            create_repo(self.piclist_gitee_token,repo_name)
+                            self.piclist_repo_name = repo_name
+                            file_size_counter.reset()
+                            # 这里可以添加你的仓库创建逻辑
+                        elif answer.lower() == "no":
+                            logging.info("Input no, exit.")
+                            exit()
+                        else:
+                            logging.error("Invalid input. exit.")
+                            exit()
+                    
+                    
+            
 
     def _add_or_update_file(
         self, file_id, file_name, local_dir, modify_time, create_time

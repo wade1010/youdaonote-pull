@@ -2,6 +2,10 @@
     "local_dir": "D:/download/youdaonote-pull-master/data",
     "ydnote_dir": "",
     "smms_secret_token": "",
+    "is_relative_path": true,
     "piclist_api": "http://127.0.0.1:18888/upload?key=a123456",
-    "is_relative_path": true
+    "piclist_data_json_path": "",
+    "piclist_repo_name": "images5",
+    "piclist_max_repo_size_mb": 450,
+    "piclist_gitee_token": ""
 }

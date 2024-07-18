@@ -30,6 +30,11 @@ pip install -r requirements.txt
 都不配置，则保存到本地
 
 ---
+2024-7-18 23:25:42 补充：
+> 之前程序跑一段时间，发现 gitee 单个仓库的大小有限制，看介绍是 500MB 一下。可以参考我[这篇文章](https://blog.csdn.net/wade1010/article/details/140508131)
+> 所以增加了支持自动创建 gitee 仓库，来继续迁移
+
+---
 
 最近在玩 [X(Twitter)](https://twitter.com/deppwang1)，欢迎关注！
 

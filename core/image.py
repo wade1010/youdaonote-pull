@@ -4,9 +4,8 @@ import re
 from typing import Tuple
 from urllib import parse
 from urllib.parse import urlparse
-
 import requests
-
+import core.file_size_counter as file_size_counter
 REGEX_IMAGE_URL = re.compile(r"!\[.*?\]\((.*?note\.youdao\.com.*?)\)")
 REGEX_ATTACH = re.compile(r"\[(.*?)\]\(((http|https)://note\.youdao\.com.*?)\)")
 # 有道云笔记的图片地址
@@ -282,7 +281,9 @@ class ImageUpload(object):
         :return: url, error_msg
         """
         try:
-            piclistfile = youdaonote_api.http_get(image_url).content
+            resp = youdaonote_api.http_get(image_url)
+            file_size = resp.headers['Content-Length'] #单位是B  https://note.youdao.com/yws/res/134064/WEBRESOURCEc952e70ea552d25d95f8484c5a407066       302464
+            piclistfile = resp.content
         except:
             error_msg = "下载「{}」失败！图片可能已失效，可浏览器登录有道云笔记后，查看图片是否能正常加载".format(image_url)
             return "", error_msg
@@ -292,6 +293,7 @@ class ImageUpload(object):
             res_json = requests.post(
                 piclist_api, files=files, timeout=20
             ).json()
+            file_size_counter.increment(int(file_size))
         except requests.exceptions.ProxyError as err:
             error_msg = "网络错误，上传「{}」到 PicList 失败！将下载图片到本地。错误提示：{}".format(
                 image_url, format(err)
