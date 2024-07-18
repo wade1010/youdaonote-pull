@@ -62,7 +62,7 @@ class ImagePull:
                 continue
             # 将绝对路径替换为相对路径，实现满足 Obsidian 格式要求
             # 将 image_path 路径中 images 之前的路径去掉，只保留以 images 开头的之后的路径
-            if self.is_relative_path and (not self.smms_secret_token or not self.piclist_api):
+            if self.is_relative_path and not self.smms_secret_token and not self.piclist_api:
                 image_path = image_path[image_path.find(IMAGES) :]
 
             image_path = self._url_encode(image_path)
@@ -116,7 +116,7 @@ class ImagePull:
         # 如果上传失败，仍下载到本地
         if not error_msg:
             return new_file_url
-        logging.info(error_msg)
+        logging.error(error_msg)
         image_path = self._download_ydnote_url(file_path, image_url)
         return image_path or image_url
 
