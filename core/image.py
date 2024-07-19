@@ -7,7 +7,8 @@ from urllib.parse import urlparse
 import requests
 import core.file_size_counter as file_size_counter
 REGEX_IMAGE_URL = re.compile(r"!\[.*?\]\((.*?note\.youdao\.com.*?)\)")
-REGEX_ATTACH = re.compile(r"\[(.*?)\]\(((http|https)://note\.youdao\.com.*?)\)")
+REGEX_ATTACH = re.compile(
+    r"\[(.*?)\]\(((http|https)://note\.youdao\.com.*?)\)")
 # 有道云笔记的图片地址
 IMAGES = "images"
 # 有道云笔记的附件地址
@@ -55,14 +56,15 @@ class ImagePull:
                 image_path = self._get_new_image_path(file_path, image_url)
             except Exception as error:
                 logging.info(
-                    "下载图片「{}」可能失败！请检查图片！错误提示：{}".format(image_url, format(error))
+                    "下载图片「{}」可能失败！请检查图片！错误提示：{}".format(
+                        image_url, format(error))
                 )
             if image_url == image_path:
                 continue
             # 将绝对路径替换为相对路径，实现满足 Obsidian 格式要求
             # 将 image_path 路径中 images 之前的路径去掉，只保留以 images 开头的之后的路径
             if self.is_relative_path and not self.smms_secret_token and not self.piclist_api:
-                image_path = image_path[image_path.find(IMAGES) :]
+                image_path = image_path[image_path.find(IMAGES):]
 
             image_path = self._url_encode(image_path)
             content = content.replace(image_url, image_path)
@@ -80,7 +82,7 @@ class ImagePull:
                 continue
             # 将 attach_path 路径中 attachments 之前的路径去掉，只保留以 attachments 开头的之后的路径
             if self.is_relative_path:
-                attach_path = attach_path[attach_path.find(ATTACH) :]
+                attach_path = attach_path[attach_path.find(ATTACH):]
             content = content.replace(attach_url, attach_path)
 
         with open(file_path, "wb") as f:
@@ -188,12 +190,14 @@ class ImagePull:
             file_name = file_basename + filename
         else:
             file_name = "".join([file_basename, file_suffix])
-        local_file_path = os.path.join(local_file_dir, file_name).replace("\\", "/")
+        local_file_path = os.path.join(
+            local_file_dir, file_name).replace("\\", "/")
 
         try:
             with open(local_file_path, "wb") as f:
                 f.write(response.content)  # response.content 本身就为字节类型
-            logging.info("已将{}「{}」转换为「{}」".format(file_type, url, local_file_path))
+            logging.info("已将{}「{}」转换为「{}」".format(
+                file_type, url, local_file_path))
         except:
             error_msg = "{} {}有误！".format(url, file_type)
             logging.info(error_msg)
@@ -232,7 +236,8 @@ class ImageUpload(object):
         try:
             smfile = youdaonote_api.http_get(image_url).content
         except:
-            error_msg = "下载「{}」失败！图片可能已失效，可浏览器登录有道云笔记后，查看图片是否能正常加载".format(image_url)
+            error_msg = "下载「{}」失败！图片可能已失效，可浏览器登录有道云笔记后，查看图片是否能正常加载".format(
+                image_url)
             return "", error_msg
         files = {"smfile": smfile}
         upload_api_url = "https://sm.ms/api/v2/upload"
@@ -271,7 +276,7 @@ class ImageUpload(object):
             )
         )
         return "", error_msg
-    
+
     @staticmethod
     def upload_to_piclist(youdaonote_api, image_url, piclist_api) -> Tuple[str, str]:
         """
@@ -285,7 +290,8 @@ class ImageUpload(object):
             file_size = resp.headers['Content-Length']
             piclistfile = resp.content
         except:
-            error_msg = "下载「{}」失败！图片可能已失效，可浏览器登录有道云笔记后，查看图片是否能正常加载".format(image_url)
+            error_msg = "下载「{}」失败！图片可能已失效，可浏览器登录有道云笔记后，查看图片是否能正常加载".format(
+                image_url)
             return "", error_msg
         files = {"piclistfile": piclistfile}
 
@@ -294,6 +300,8 @@ class ImageUpload(object):
                 piclist_api, files=files, timeout=20
             ).json()
             file_size_counter.increment(int(file_size))
+            logging.info("本次已上传大小为{:.2f}MB".format(
+                file_size_counter.get()/1024/1024))
         except requests.exceptions.ProxyError as err:
             error_msg = "网络错误，上传「{}」到 PicList 失败！将下载图片到本地。错误提示：{}".format(
                 image_url, format(err)

@@ -32,8 +32,12 @@ pip install -r requirements.txt
 ---
 2024-7-18 23:25:42 补充：
 > 之前程序跑一段时间，发现 gitee 单个仓库的大小有限制，看介绍是 500MB 一下。可以参考我[这篇文章](https://blog.csdn.net/wade1010/article/details/140508131)
-> 所以增加了支持自动创建 gitee 仓库，来继续迁移
+> 所以增加了支持判断单次上传文件大小是否超过设置的阈值，如果超过则自动创建 gitee 仓库，来继续迁移
 
+需要注意的事，gitee 默认创建的分支名称是 main，需要是 master，在 gitee 我的->设置->仓库首选项->默认分支改为master
+
+x
+下面都是原作者的内容
 ---
 
 最近在玩 [X(Twitter)](https://twitter.com/deppwang1)，欢迎关注！

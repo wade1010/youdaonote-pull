@@ -55,11 +55,18 @@ class YoudaoNotePull(object):
         self.youdaonote_api = None
         self.smms_secret_token = None
         self.is_relative_path = None  # 是否使用相对路径
-        self.piclist_api = None # 是否使用 PicList 作为图床
-        self.piclist_max_repo_size_mb = None # 可以不配置, 建议填450 PicList 后端采用 gitee 时，单个仓库上传图片最大值，官网写着免费版是500MB，这个统计有延时，我传了2个GB的时候，发邮件通知我，说我超过1个G了，仓库被屏蔽 可以查看笔记 https://blog.csdn.net/wade1010/article/details/140508131。单位MB，但是目前仅仅计算程序一次运行上传的量是不是超过该值，不考虑其他情况了
-        self.piclist_data_json_path = None # 可以不配置, piclist_max_repo_size_mb 配置后，必须配置该值。 这个是在你笔记特别多的时候，giee单个仓库是有限制的，传多了就会被限制，这里直接修改配置文件里面 gitee 的仓库名，没找到好的办法让 PicList 立马重新加载，只能输出一个提示，让用户自己重启。 后来是让用户自己修改配置，所以此项暂时没用
-        self.piclist_repo_name = None # 可以不配置, piclist_max_repo_size_mb 配置后，必须配置该值。gitee 基础镜像名，比如是字母+数字《如 images6，当images6 超过大小后，我会创建 images7，以此类推
-        self.piclist_gitee_token = None # 可以不配置, piclist_max_repo_size_mb 配置后，必须配置该值。gitee tonken ，用来创建桶
+        self.piclist_api = None  # 是否使用 PicList 作为图床
+        self.piclist_max_repo_size_mb = None  # 可以不配置, 建议填450 PicList 后端采用 gitee 时，单个仓库上传图片最大值，官网写着免费版是500MB，这个统计有延时，我传了2个GB的时候，发邮件通知我，说我超过1个G了，仓库被屏蔽 可以查看笔记 https://blog.csdn.net/wade1010/article/details/140508131。单位MB，但是目前仅仅计算程序一次运行上传的量是不是超过该值，不考虑其他情况了
+        # 可以不配置, piclist_max_repo_size_mb 配置后，必须配置该值。 这个是在你笔记特别多的时候，giee单个仓库是有限制的，传多了就会被限制，这里直接修改配置文件里面 gitee 的仓库名，没找到好的办法让 PicList 立马重新加载，只能输出一个提示，让用户自己重启。 后来是让用户自己修改配置，所以此项暂时没用
+        self.piclist_data_json_path = None
+        # 可以不配置, piclist_max_repo_size_mb 配置后，必须配置该值。gitee 基础镜像名，比如是字母+数字《如 images6，当images6 超过大小后，我会创建 images7，以此类推
+        self.piclist_repo_name = None
+        # 设置的仓库名( piclist_repo_name ) 不存在时 可以打开此选项，第一次运行程序的时候，会创建该仓库
+        self.piclist_create_repo_when_first_run = False
+        # 创建仓库默认空仓库是不能设置为公开的，所以我默认会传一个README.md文件，然后再设置为公开
+        self.piclist_create_repo_username = None
+        # 可以不配置, piclist_max_repo_size_mb 配置后，必须配置该值。gitee tonken ，用来创建桶
+        self.piclist_gitee_token = None
 
     def _covert_config(self, config_path=None) -> Tuple[dict, str]:
         """
@@ -84,11 +91,12 @@ class YoudaoNotePull(object):
                 "请检查「config.json」格式是否为 utf-8 格式的 json！建议使用 Sublime 编辑「config.json」",
             )
 
-        key_list = ["local_dir", "ydnote_dir", "smms_secret_token", "is_relative_path", "piclist_api", "piclist_data_json_path", "piclist_repo_name", "piclist_max_repo_size_mb", "piclist_gitee_token"]
+        key_list = ["local_dir", "ydnote_dir", "smms_secret_token", "is_relative_path", "piclist_api",
+                    "piclist_data_json_path", "piclist_repo_name", "piclist_create_repo_when_first_run", "piclist_create_repo_username", "piclist_max_repo_size_mb", "piclist_gitee_token"]
         if key_list != list(config_dict.keys()):
             return (
                 {},
-                "请检查「config.json」的 key 是否分别为 local_dir, ydnote_dir, smms_secret_token, is_relative_path, piclist_api, piclist_data_json_path, piclist_repo_name, piclist_max_repo_size_mb, piclist_gitee_token",
+                "请检查「config.json」的 key 是否分别为 local_dir, ydnote_dir, smms_secret_token, is_relative_path, piclist_api, piclist_data_json_path, piclist_repo_name, piclist_create_repo_when_first_run, piclist_create_repo_username, piclist_max_repo_size_mb, piclist_gitee_token",
             )
         return config_dict, ""
 
@@ -102,7 +110,8 @@ class YoudaoNotePull(object):
         if not local_dir:
             add_dir = test_default_dir if test_default_dir else "youdaonote"
             # 兼容 Windows 系统，将路径分隔符（\\）替换为 /
-            local_dir = os.path.join(get_script_directory(), add_dir).replace("\\", "/")
+            local_dir = os.path.join(
+                get_script_directory(), add_dir).replace("\\", "/")
 
         # 如果指定的本地文件夹不存在，创建文件夹
         if not os.path.exists(local_dir):
@@ -141,7 +150,8 @@ class YoudaoNotePull(object):
         config_dict, error_msg = self._covert_config()
         if error_msg:
             return "", error_msg
-        local_dir, error_msg = self._check_local_dir(local_dir=config_dict["local_dir"])
+        local_dir, error_msg = self._check_local_dir(
+            local_dir=config_dict["local_dir"])
         if error_msg:
             return "", error_msg
         self.root_local_dir = local_dir
@@ -156,6 +166,8 @@ class YoudaoNotePull(object):
         self.piclist_max_repo_size_mb = config_dict["piclist_max_repo_size_mb"]
         self.piclist_data_json_path = config_dict["piclist_data_json_path"]
         self.piclist_repo_name = config_dict["piclist_repo_name"]
+        self.piclist_create_repo_when_first_run = config_dict["piclist_create_repo_when_first_run"]
+        self.piclist_create_repo_username = config_dict["piclist_create_repo_username"]
         self.piclist_gitee_token = config_dict["piclist_gitee_token"]
         return self._get_ydnote_dir_id(ydnote_dir=config_dict["ydnote_dir"])
 
@@ -213,7 +225,8 @@ class YoudaoNotePull(object):
         # 替换下划线
         regex_symbol = re.compile(r"[<]")  # 符号： <
         # 删除特殊字符
-        del_regex_symbol = re.compile(r'[\\/":\|\*\?#>]')  # 符号：\ / " : | * ? # >
+        del_regex_symbol = re.compile(
+            r'[\\/":\|\*\?#>]')  # 符号：\ / " : | * ? # >
         # 首尾的空格
         name = name.replace("\n", "")
         # 去除换行符
@@ -247,28 +260,40 @@ class YoudaoNotePull(object):
             else:
                 modify_time = file_entry["modifyTimeForSort"]
                 create_time = file_entry["createTimeForSort"]
-                self._add_or_update_file(id, name, local_dir, modify_time, create_time)
+                self._add_or_update_file(
+                    id, name, local_dir, modify_time, create_time)
                 if self.piclist_max_repo_size_mb is not None:
                     # 判断是否超过单仓库上限 ，目前只支持从头开始计算。
                     if file_size_counter.get() > self.piclist_max_repo_size_mb*1024*1024:
-                        repo_name = increment_string(self.piclist_repo_name)
-                        answer = input(f"'{self.piclist_repo_name}的大小已经达到阈值，即将创建新仓库'{repo_name}'，请在 PicList 中将 gitee 图床的 repo 改为'{repo_name}',是否已经修改? (yes/no) 输入 no 将退出程序: ")
-                        if answer.lower() == "yes":
+                        while True:
+                            repo_name = increment_string(
+                                self.piclist_repo_name)
+                            answer = input(
+                                f"\n'{self.piclist_repo_name}的大小已经达到阈值，即将创建新仓库'{repo_name}'，请在 PicList 中将 gitee 图床的 repo 改为'{repo_name}',是否已经修改? (yes/no/other) 输入 no 将退出程序，输入其它表示仓库名(必须字母+数字结尾) ")
+                            if answer.lower() == "no":
+                                logging.info("Input no, exit.")
+                                exit()
+                            if answer.lower() == "yes":
+                                pass
+                            else:
+                                if increment_string(answer) is None:
+                                    logging.error("输入的仓库名不符合要求，必须字母+数字结尾，重新")
+                                    continue
+                                repo_name = answer
                             # 在这里执行创建仓库的操作
-                            logging.info(f"Creating repository '{repo_name}'...")
-                            create_repo(self.piclist_gitee_token,repo_name)
+                            logging.info(
+                                f"Creating repository '{repo_name}'...")
+                            create_repo(
+                                self.piclist_gitee_token, repo_name, self.piclist_create_repo_username
+                            )
                             self.piclist_repo_name = repo_name
                             file_size_counter.reset()
-                            # 这里可以添加你的仓库创建逻辑
-                        elif answer.lower() == "no":
-                            logging.info("Input no, exit.")
-                            exit()
-                        else:
-                            logging.error("Invalid input. exit.")
-                            exit()
-                    
-                    
-            
+                            # 替换 config.json 里面的 piclist_repo_name
+                            from core.common import update_config
+                            update_config(
+                                'piclist_repo_name', self.piclist_repo_name, 'config.json'
+                            )
+                            break
 
     def _add_or_update_file(
         self, file_id, file_name, local_dir, modify_time, create_time
@@ -294,7 +319,8 @@ class YoudaoNotePull(object):
         # 「文档」类型本地文件均已 .md 结尾
         local_file_path = (
             os.path.join(
-                local_dir, "".join([os.path.splitext(file_name)[0], MARKDOWN_SUFFIX])
+                local_dir, "".join(
+                    [os.path.splitext(file_name)[0], MARKDOWN_SUFFIX])
             ).replace("\\", "/")
             if file_type != FileType.OTHER
             else original_file_path
@@ -302,7 +328,8 @@ class YoudaoNotePull(object):
 
         # 如果有有道云笔记是「文档」类型，则提示类型
         tip = (
-            "，云笔记原格式为 {}".format(file_type.name) if file_type != FileType.OTHER else ""
+            "，云笔记原格式为 {}".format(
+                file_type.name) if file_type != FileType.OTHER else ""
         )
 
         file_action = self._get_file_action(local_file_path, modify_time)
@@ -324,7 +351,8 @@ class YoudaoNotePull(object):
                     "{}「{}」{}".format(file_action.value, local_file_path, tip)
                 )
             else:
-                logging.info("{}「{}」{}".format(file_action.value, local_file_path, tip))
+                logging.info("{}「{}」{}".format(
+                    file_action.value, local_file_path, tip))
 
             # 本地文件时间设置为有道云笔记的时间
             if platform.system() == "Windows":
@@ -361,7 +389,8 @@ class YoudaoNotePull(object):
             try:
                 YoudaoNoteConvert.covert_xml_to_markdown(file_path)
             except ET.ParseError:
-                logging.info("此 note 笔记应该为 17 年以前新建，格式为 html，将转换为 Markdown ...")
+                logging.info(
+                    "此 note 笔记应该为 17 年以前新建，格式为 html，将转换为 Markdown ...")
                 YoudaoNoteConvert.covert_html_to_markdown(file_path)
             except Exception as e:
                 logging.info("note 笔记转换 MarkDown 失败，将跳过", repr(e))
@@ -384,6 +413,12 @@ if __name__ == "__main__":
     try:
         youdaonote_pull = YoudaoNotePull()
         ydnote_dir_id, error_msg = youdaonote_pull.get_ydnote_dir_id()
+        # 判断是否创建新仓库
+        if youdaonote_pull.piclist_create_repo_when_first_run:
+            create_repo(
+                youdaonote_pull.piclist_gitee_token, youdaonote_pull.piclist_repo_name, youdaonote_pull.piclist_create_repo_username
+            )
+
         if error_msg:
             logging.info(error_msg)
             sys.exit(1)

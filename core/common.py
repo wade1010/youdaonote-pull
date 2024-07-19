@@ -1,6 +1,7 @@
 import os
 import sys
 import re
+import json
 
 
 def get_script_directory():
@@ -13,6 +14,7 @@ def get_script_directory():
         # 如果是普通脚本
         return "."
 
+
 def increment_string(s):
     match = re.search(r"(\D+)(\d+)", s)  # 匹配字母后面的数字部分
     if match:
@@ -23,3 +25,19 @@ def increment_string(s):
         return next_string
     else:
         return None
+
+
+def update_config(field, value, config_file):
+    # 检查配置文件是否存在
+    if not os.path.exists(config_file):
+        raise FileNotFoundError(f"{config_file} 文件不存在")
+
+    # 读取配置文件内容
+    with open(config_file, 'r', encoding='utf-8') as file:
+        config_data = json.load(file)
+
+    config_data[field] = value
+
+    # 写回配置文件
+    with open(config_file, 'w', encoding='utf-8') as file:
+        json.dump(config_data, file, ensure_ascii=False, indent=4)
